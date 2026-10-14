@@ -26,3 +26,11 @@ Placement and reposition acceptance:
   dimension alone changes, even if the dropdown shows another mode.
 - Change the panel scale before repositioning: the original dimension scale should
   still be used. Save/reopen and repeat to check metadata persistence in Illustrator.
+
+Accuracy and clearance acceptance:
+- At each drawing scale, create 24 x 34 1/2 and 36 x 34 1/2 inch rectangles.
+  Width/height labels should match the inputs without adding stroke thickness.
+- Confirm 0.75 pt dimension/extension lines and 1.25 pt ticks are readable.
+- Confirm extension lines start 3 pt beyond the visible object stroke, including
+  after increasing the rectangle's stroke weight and applying a new offset.
+- An offset too small to leave the gap should report an error and preserve artwork.

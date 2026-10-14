@@ -59,9 +59,10 @@ NOTES / LIMITATIONS
 * Group movement keeps new dimensions with the source artwork. Resizing or editing
   the source does not recalculate labels or offsets. Ungroup and remove old
   dimension graphics before measuring resized artwork again.
-* Width/height use visible bounds, including stroke where applicable.
-* Extension-line and dimension-line overrun is 6 pt each; 45-degree ticks are 1 pt,
-  dimension and extension lines 0.5 pt. The panel uses 10 pt labels.
+* Width/height measure geometric bounds, excluding stroke thickness.
+* Extension-line and dimension-line overrun is 6 pt each; 45-degree ticks are 1.25 pt,
+  dimension and extension lines 0.75 pt. Extension lines start 3 pt beyond
+  the visible object stroke; offsets too small to leave this gap are rejected. The panel uses 10 pt labels.
 * This prototype is not code-signed. Only enable developer mode on a trusted machine.
 * No automatic update, persistent tool cursor, or two-click point-picking yet.
 * Scale is kept in the panel; save-scale metadata is best-effort, not a guarantee of

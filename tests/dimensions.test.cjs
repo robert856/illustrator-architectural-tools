@@ -25,7 +25,9 @@ function fixture(){
   }
   const layer=container('Layer');const sibling=item('PathItem',layer);
   const source=item('PathItem',layer);source.note='user metadata';source.bounds=[10,100,82,28];
-  Object.defineProperty(source,'visibleBounds',{get(){return this.bounds}});
+  Object.defineProperty(source,'geometricBounds',{get(){return this.bounds}});
+  source.stroked=true;source.strokeWidth=0.75;
+  Object.defineProperty(source,'visibleBounds',{get(){const [l,t,r,b]=this.bounds;const half=this.stroked?this.strokeWidth/2:0;return [l-half,t+half,r+half,b-half]}});
   source.pathPoints=[{anchor:[10,28],leftDirection:[10,28]},{anchor:[82,28],rightDirection:[82,28]}];source.closed=false;
   const doc={selection:[source],tags:{getByName:()=>({})}};
   const ctx={app:{documents:[doc],activeDocument:doc},ElementPlacement:placement,ZOrderMethod:{BRINGTOFRONT:'front'},RGBColor:function(){}};
@@ -133,4 +135,36 @@ test('panel sends chosen mode and offset to the reposition command',()=>{
   elements.reposition.onclick();
   assert.equal(expression,'RJWArch.reposition("vertical","0.75")');
   assert.equal(elements.status.textContent,'Updated');
+});
+test('created rectangles measure exactly at every panel scale, excluding stroke',()=>{
+  for(const scale of [12,16,24,48,96]){
+    for(const width of [24,36]){
+      const {api,doc,source}=fixture();
+      doc.artboards=Object.assign([{artboardRect:[0,792,612,0]}],{getActiveArtboardIndex:()=>0});
+      doc.pathItems={rectangle:(top,left,w,h)=>{source.bounds=[left,top,left+w,top-h];return source}};
+      assert.match(api.rectangle(String(scale),String(width),'34 1/2'),/^Created/);
+      doc.selection=[source];
+      assert.ok(api.dimension(String(scale),'horizontal','0.3').startsWith('Dimensioned '+width+'" at'));
+      doc.selection=[source.parent];
+      assert.ok(api.dimension(String(scale),'vertical','0.3').startsWith('Dimensioned 34 1/2" at'));
+    }
+  }
+});
+test('extension lines start 3 pt beyond the visible stroke and have stronger weights',()=>{
+  for(const mode of ['horizontal','vertical','line']){
+    const {api,source}=fixture();source.strokeWidth=4;
+    assert.match(api.dimension('48',mode,'0.3'),/^Dimensioned/);
+    const group=source.parent.pageItems[0];
+    const paths=group.pageItems.filter(p=>p.points);
+    assert.equal(paths[0].strokeWidth,0.75);
+    assert.equal(paths[1].strokeWidth,0.75);assert.equal(paths[3].strokeWidth,1.25);
+    if(mode==='horizontal')assert.equal(paths[1].points[0][1],source.visibleBounds[3]-3);
+    else if(mode==='vertical')assert.equal(paths[1].points[0][0],source.visibleBounds[2]+3);
+    else assert.equal(paths[1].points[0][1],source.pathPoints[0].anchor[1]+5);
+  }
+});
+test('tiny offsets fail without drawing extensions through the source',()=>{
+  const {api,source,layer}=fixture();
+  assert.match(api.dimension('48','horizontal','0.01'),/^Error: Increase the dimension offset/);
+  assert.equal(source.parent,layer);assert.equal(layer.pageItems.length,2);
 });
