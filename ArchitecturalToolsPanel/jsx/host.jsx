@@ -68,9 +68,9 @@ var RJWArch = RJWArch || {};
     if(off<=gap)throw Error('Increase the dimension offset to leave a 3 pt gap outside the object stroke.');
     var a1x=x1+nx*off,a1y=y1+ny*off,a2x=x2+nx*off,a2y=y2+ny*off;
     var group=obj.parent.groupItems.add();group.note=dimensionNote;setTag(group,'RJW_ARCH_MODE',mode);setTag(group,'RJW_ARCH_SCALE',s);group.name='Dimension '+formatInches(len*s/72);var over=6,tick=8;
-    strokeLine(group,a1x-ux*over,a1y-uy*over,a2x+ux*over,a2y+uy*over,0.75);
-    strokeLine(group,x1+nx*gap,y1+ny*gap,a1x+nx*over,a1y+ny*over,0.75);
-    strokeLine(group,x2+nx*gap,y2+ny*gap,a2x+nx*over,a2y+ny*over,0.75);
+    strokeLine(group,a1x-ux*over,a1y-uy*over,a2x+ux*over,a2y+uy*over,0.625);
+    strokeLine(group,x1+nx*gap,y1+ny*gap,a1x+nx*over,a1y+ny*over,0.625);
+    strokeLine(group,x2+nx*gap,y2+ny*gap,a2x+nx*over,a2y+ny*over,0.625);
     for(var i=0;i<2;i++){var px=i?a2x:a1x,py=i?a2y:a1y;strokeLine(group,px-ux*tick/2-nx*tick/2,py-uy*tick/2-ny*tick/2,px+ux*tick/2+nx*tick/2,py+uy*tick/2+ny*tick/2,1.25);}
     var label=formatInches(len*s/72),tx=(a1x+a2x)/2,ty=(a1y+a2y)/2;var textItem=txt(group,label,tx,ty);labelBackground(group,textItem,tx,ty);var assembly=attachDimension(obj,group);if(previous)previous.remove();d.selection=null;assembly.selected=true;save(d,s);return 'Dimensioned '+label+' at 1:'+s+'. Move the group with the Selection tool (V).';
   }catch(e){if(group){try{group.remove();}catch(ignored){}}return 'Error: '+e.message;}}

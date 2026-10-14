@@ -156,8 +156,9 @@ test('extension lines start 3 pt beyond the visible stroke and have stronger wei
     assert.match(api.dimension('48',mode,'0.3'),/^Dimensioned/);
     const group=source.parent.pageItems[0];
     const paths=group.pageItems.filter(p=>p.points);
-    assert.equal(paths[0].strokeWidth,0.75);
-    assert.equal(paths[1].strokeWidth,0.75);assert.equal(paths[3].strokeWidth,1.25);
+    assert.equal(paths[0].strokeWidth,0.625);
+    assert.equal(paths[1].strokeWidth,0.625);assert.equal(paths[3].strokeWidth,1.25);
+    assert.ok(paths.slice(0,3).every(p=>p.strokeWidth===paths[3].strokeWidth/2));
     if(mode==='horizontal')assert.equal(paths[1].points[0][1],source.visibleBounds[3]-3);
     else if(mode==='vertical')assert.equal(paths[1].points[0][0],source.visibleBounds[2]+3);
     else assert.equal(paths[1].points[0][1],source.pathPoints[0].anchor[1]+5);
