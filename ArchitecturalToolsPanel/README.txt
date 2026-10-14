@@ -30,12 +30,20 @@ Select drawing scale. Rectangle: enter actual dimensions in inches (e.g. 36, 34 
 and click Create scaled rectangle. It is created near the top left of the current artboard.
 Dimension: select one object and click Dimension selected width or height; or select
 an open straight two-anchor path and click Dimension selected straight line.
+The source and new dimensions are grouped on the source's layer. Move the group
+with the Selection tool (V) to keep dimensions with the artwork. Leave the group
+selected to add width/height dimensions; only the source artwork is measured.
+Direct Selection (A) can move the source independently. Ungrouping breaks the
+shared movement. Existing dimensions made by the original version remain separate;
+delete those dimensions and recreate them to use grouping.
 
 NOTES / LIMITATIONS
 * The selected scale is applied to rectangles and dimension readouts. It does NOT
   change Illustrator's built-in rulers, Transform panel, or other drawing tools.
 * All measurements are inches. Dimension labels round to nearest 1/16 inch.
-* Dimension graphics are static and are not associative to source geometry.
+* Group movement keeps new dimensions with the source artwork. Resizing or editing
+  the source does not recalculate labels or offsets. Ungroup and remove old
+  dimension graphics before measuring resized artwork again.
 * Width/height use visible bounds, including stroke where applicable.
 * Extension-line and dimension-line overrun is 6 pt each; 45-degree ticks are 1 pt,
   dimension and extension lines 0.5 pt. The panel uses 10 pt labels.
