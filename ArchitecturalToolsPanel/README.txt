@@ -37,6 +37,21 @@ Direct Selection (A) can move the source independently. Ungrouping breaks the
 shared movement. Existing dimensions made by the original version remain separate;
 delete those dimensions and recreate them to use grouping.
 
+DIMENSION PLACEMENT
+Width dimensions sit below the source; height dimensions sit to its right.
+Labels are centered on the dimension line with a white background and 3 pt padding.
+To reposition: select the dimensioned group, choose Width/Height/Straight line in
+"Dimension to reposition", enter a positive paper-space offset in inches, then
+click "Apply offset to existing dimension". Larger values move farther away.
+The source stays in place and extension lines are redrawn to the new offset.
+Alternatively, select one dimension group or its label/line inside the assembly
+(using Illustrator's group isolation or Layers panel); Apply offset updates that
+specific dimension regardless of the dropdown. Leave the source and dimension
+in their assembly so moving the assembly still moves everything together.
+If multiple dimensions share the chosen mode, select the specific dimension.
+Older dimensions must be deleted and recreated once with this updated panel.
+Reposition uses the dimension's original drawing scale and current source bounds.
+
 NOTES / LIMITATIONS
 * The selected scale is applied to rectangles and dimension readouts. It does NOT
   change Illustrator's built-in rulers, Transform panel, or other drawing tools.
