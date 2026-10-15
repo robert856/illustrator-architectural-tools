@@ -34,3 +34,23 @@ Accuracy and clearance acceptance:
 - Confirm extension lines start 3 pt beyond the visible object stroke, including
   after increasing the rectangle's stroke weight and applying a new offset.
 - An offset too small to leave the gap should report an error and preserve artwork.
+
+
+Two-point and chain desktop acceptance:
+- Deselect artwork, use A to click one anchor then Shift-click a second anchor on
+  another object. Create each of the six point placements and verify values,
+  white label masks, clear gaps and offsets.
+- With four furniture height breakpoints selected (one per height, potentially on
+  different objects), choose Vertical right and create a chain. Confirm three
+  consecutive dimensions align on a single baseline. Repeat on the left and with
+  horizontal width breakpoints. Neither source object should change parents.
+- Create multiple point dimensions, move an annotation group, save/reopen, and
+  Apply offset to it. Verify the stored reference points and original scale work.
+- Select a single segment inside a chain and Apply offset. Only that segment
+  should change. Selecting the whole chain is for moving the annotations together,
+  not for applying an offset to every segment.
+- Repeat after nesting source paths in groups and compound paths. Only selected
+  anchors should count. Reject whole rectangles, too few anchors, duplicate chain
+  heights, and zero projected distance without leaving partial artwork.
+- Confirm native selection and save/reopen behavior in Illustrator; mock tests
+  cannot validate these host-specific interactions.

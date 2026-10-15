@@ -37,6 +37,39 @@ Direct Selection (A) can move the source independently. Ungrouping breaks the
 shared movement. Existing dimensions made by the original version remain separate;
 delete those dimensions and recreate them to use grouping.
 
+TWO-POINT DIMENSIONS
+Use Direct Selection (A). Deselect first, click one anchor, then Shift-click a
+second anchor on the same or another object. Exactly two anchors must be selected;
+selecting an entire rectangle selects too many. Choose a point dimension placement
+(Horizontal below/above, Vertical right/left, or Aligned side 1/2), set the paper
+space offset, then click "Dimension two selected anchors". Horizontal/vertical
+measure the projected distance; Aligned measures the direct distance.
+Aligned side 1 is the left normal when reading from the leftmost point to the
+rightmost (bottom to top for a vertical pair); side 2 is the opposite side.
+Repeat with other pairs to create multiple independent dimensions.
+Select a point dimension group, change the offset and click Apply offset to
+redraw it on its original side at its original scale. The reposition dropdown
+is ignored when an individual dimension is selected.
+
+CHAIN DIMENSIONS (FURNITURE BREAKPOINTS)
+With Direct Selection (A), Shift-select three or more anchor breakpoints, including
+anchors from different objects. For crown/cabinet/base heights, choose Vertical
+right or left; for a row of widths choose Horizontal above or below. Set the
+offset and click "Chain dimensions from 3+ anchors". Points are sorted by height
+or width, regardless of selection order. Each adjacent pair gets a dimension;
+all segments share one baseline outside the selected points. With four selected
+heights, you get three consecutive dimensions. Select one anchor at each height;
+duplicate heights (or duplicate width positions for horizontal chains) are rejected.
+The chain is grouped so its annotations can be moved together. Select an individual
+segment inside the chain to Apply offset; changing that segment's offset can
+separate it from the common baseline. To reposition the whole chain while keeping
+its extension origins fixed, delete/recreate it with the new offset.
+
+Point and chain dimensions are separate annotations, NOT live attachments to
+source objects. The panel does not regroup or move either source object. Moving
+or resizing source objects requires deleting/recreating these annotations.
+No native canvas click-click-drag tool is registered by this CEP panel.
+
 DIMENSION PLACEMENT
 Width dimensions sit below the source; height dimensions sit to its right.
 Labels are centered on the dimension line with a white background and 3 pt padding.

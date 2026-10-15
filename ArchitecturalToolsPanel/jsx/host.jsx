@@ -55,6 +55,25 @@ var RJWArch = RJWArch || {};
   function save(d,s){try{var tag=d.tags.getByName('RJW_ARCH_SCALE');tag.value=String(s);}catch(e){try{var t=d.tags.add();t.name='RJW_ARCH_SCALE';t.value=String(s);}catch(ignored){/* scale supplied from panel remains authoritative */}}}
   RJWArch.saveScale=function(s){try{var d=doc();s=scaleVal(s);save(d,s);return 'Scale set to 1:'+s+'. (Panel scale controls generated artwork.)';}catch(e){return 'Error: '+e.message;}};
   RJWArch.rectangle=function(s,w,h){try{var d=doc();s=scaleVal(s);w=parseInches(w);h=parseInches(h);var aw=w*72/s,ah=h*72/s;var ab=d.artboards[d.artboards.getActiveArtboardIndex()].artboardRect;var x=ab[0]+36,y=ab[1]-36;var r=d.pathItems.rectangle(y,x,aw,ah);r.filled=false;r.stroked=true;r.strokeWidth=0.75;r.strokeColor=color();d.selection=null;r.selected=true;save(d,s);return 'Created '+formatInches(w)+' × '+formatInches(h)+' at 1:'+s+'.';}catch(e){return 'Error: '+e.message;}};
+  function drawDimension(parent,s,mode,p1,p2,q1,q2,nx,ny,gap){
+    var group=parent.groupItems.add();
+    try{
+      group.note=dimensionNote;setTag(group,'RJW_ARCH_MODE',mode);setTag(group,'RJW_ARCH_SCALE',s);
+      var dx=q2[0]-q1[0],dy=q2[1]-q1[1],len=Math.sqrt(dx*dx+dy*dy),ux=dx/len,uy=dy/len;
+      var label=formatInches(len*s/72);group.name='Dimension '+label;
+      var over=6,tick=8;
+      strokeLine(group,q1[0]-ux*over,q1[1]-uy*over,q2[0]+ux*over,q2[1]+uy*over,0.625);
+      strokeLine(group,p1[0]+nx*gap,p1[1]+ny*gap,q1[0]+nx*over,q1[1]+ny*over,0.625);
+      strokeLine(group,p2[0]+nx*gap,p2[1]+ny*gap,q2[0]+nx*over,q2[1]+ny*over,0.625);
+      for(var i=0;i<2;i++){
+        var q=i?q2:q1;
+        strokeLine(group,q[0]-ux*tick/2-nx*tick/2,q[1]-uy*tick/2-ny*tick/2,q[0]+ux*tick/2+nx*tick/2,q[1]+uy*tick/2+ny*tick/2,1.25);
+      }
+      var tx=(q1[0]+q2[0])/2,ty=(q1[1]+q2[1])/2;
+      var textItem=txt(group,label,tx,ty);labelBackground(group,textItem,tx,ty);
+      return group;
+    }catch(e){group.remove();throw e;}
+  }
   function dimension(s,mode,offset,previous){try{var d=doc();s=scaleVal(s);var off=parseInches(offset)*72;if(!d.selection||d.selection.length!==1)throw Error('Select exactly one object or straight line.');var obj=sourceOf(previous?previous.parent:d.selection[0]),bounds=obj.geometricBounds;var l=bounds[0],t=bounds[1],r=bounds[2],b=bounds[3];var x1,y1,x2,y2,axis;
     if(mode==='horizontal'){x1=l;y1=b;x2=r;y2=b;axis='h';}else if(mode==='vertical'){x1=r;y1=b;x2=r;y2=t;axis='v';}else if(mode==='line'){if(obj.typename!=='PathItem'||obj.pathPoints.length!==2||obj.closed)throw Error('Select a single open straight path with two anchors.');var a=obj.pathPoints[0],z=obj.pathPoints[1];if(Math.abs(a.leftDirection[0]-a.anchor[0])>0.01||Math.abs(a.leftDirection[1]-a.anchor[1])>0.01||Math.abs(z.rightDirection[0]-z.anchor[0])>0.01||Math.abs(z.rightDirection[1]-z.anchor[1])>0.01)throw Error('Curved paths are not supported.');x1=a.anchor[0];y1=a.anchor[1];x2=z.anchor[0];y2=z.anchor[1];axis='line';}else throw Error('Unknown dimension mode.');
     var dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);if(len<0.01)throw Error('Selected geometry has zero length.');var ux=dx/len,uy=dy/len,nx=-uy,ny=ux;
@@ -67,14 +86,104 @@ var RJWArch = RJWArch || {};
     var gap=3+clearance;
     if(off<=gap)throw Error('Increase the dimension offset to leave a 3 pt gap outside the object stroke.');
     var a1x=x1+nx*off,a1y=y1+ny*off,a2x=x2+nx*off,a2y=y2+ny*off;
-    var group=obj.parent.groupItems.add();group.note=dimensionNote;setTag(group,'RJW_ARCH_MODE',mode);setTag(group,'RJW_ARCH_SCALE',s);group.name='Dimension '+formatInches(len*s/72);var over=6,tick=8;
-    strokeLine(group,a1x-ux*over,a1y-uy*over,a2x+ux*over,a2y+uy*over,0.625);
-    strokeLine(group,x1+nx*gap,y1+ny*gap,a1x+nx*over,a1y+ny*over,0.625);
-    strokeLine(group,x2+nx*gap,y2+ny*gap,a2x+nx*over,a2y+ny*over,0.625);
-    for(var i=0;i<2;i++){var px=i?a2x:a1x,py=i?a2y:a1y;strokeLine(group,px-ux*tick/2-nx*tick/2,py-uy*tick/2-ny*tick/2,px+ux*tick/2+nx*tick/2,py+uy*tick/2+ny*tick/2,1.25);}
-    var label=formatInches(len*s/72),tx=(a1x+a2x)/2,ty=(a1y+a2y)/2;var textItem=txt(group,label,tx,ty);labelBackground(group,textItem,tx,ty);var assembly=attachDimension(obj,group);if(previous)previous.remove();d.selection=null;assembly.selected=true;save(d,s);return 'Dimensioned '+label+' at 1:'+s+'. Move the group with the Selection tool (V).';
+    var group=drawDimension(obj.parent,s,mode,[x1,y1],[x2,y2],[a1x,a1y],[a2x,a2y],nx,ny,gap);
+    var label=formatInches(len*s/72),assembly=attachDimension(obj,group);if(previous)previous.remove();d.selection=null;assembly.selected=true;save(d,s);return 'Dimensioned '+label+' at 1:'+s+'. Move the group with the Selection tool (V).';
   }catch(e){if(group){try{group.remove();}catch(ignored){}}return 'Error: '+e.message;}}
   RJWArch.dimension=function(s,mode,offset){return dimension(s,mode,offset,null);};
+  var referenceNote='RJW_ARCH_POINT_REFERENCE_V1';
+  function selectedAnchors(d,chain){
+    var points=[],seen=[];
+    function visit(item){
+      if(item.note===dimensionNote)return;
+      for(var k=0;k<seen.length;k++)if(seen[k]===item)return;
+      seen.push(item);
+      if(item.typename==='PathItem'){
+        for(var i=0;i<item.pathPoints.length;i++){
+          var point=item.pathPoints[i];
+          if(point.selected===PathPointSelection.ANCHORPOINT){
+            var a=point.anchor,clearance=item.stroked?item.strokeWidth/2:0;
+            points.push({point:[a[0],a[1]],clearance:clearance});
+          }
+        }
+      }else if(item.typename==='GroupItem' || item.typename==='CompoundPathItem'){
+        var children=item.typename==='GroupItem'?item.pageItems:item.pathItems;
+        for(var j=0;j<children.length;j++)visit(children[j]);
+      }
+    }
+    if(d.selection)for(var i=0;i<d.selection.length;i++)visit(d.selection[i]);
+    if((!chain && points.length!==2) || (chain && points.length<3))throw Error('Use Direct Selection (A) to select '+(chain?'at least three':'exactly two')+' anchors. Shift-click anchors on the same or different objects.');
+    return points;
+  }
+  function pointDimension(s,placement,offset,points,parent,previous,returnGroup){
+    var group;
+    try{
+      s=scaleVal(s);var off=parseInches(offset)*72;
+      var p1=points[0].point,p2=points[1].point,nx,ny,q1,q2;
+      var gap=3+Math.max(points[0].clearance,points[1].clearance);
+      if(off<=gap)throw Error('Increase the dimension offset to leave a 3 pt gap outside the object stroke.');
+      if(placement==='horizontal-below' || placement==='horizontal-above'){
+        if(p1[0]>p2[0]){var swap=p1;p1=p2;p2=swap;}
+        nx=0;ny=placement==='horizontal-below'?-1:1;
+        var y=(ny<0?Math.min(p1[1],p2[1]):Math.max(p1[1],p2[1]))+ny*off;
+        q1=[p1[0],y];q2=[p2[0],y];
+      }else if(placement==='vertical-right' || placement==='vertical-left'){
+        if(p1[1]>p2[1]){var swap=p1;p1=p2;p2=swap;}
+        nx=placement==='vertical-right'?1:-1;ny=0;
+        var x=(nx>0?Math.max(p1[0],p2[0]):Math.min(p1[0],p2[0]))+nx*off;
+        q1=[x,p1[1]];q2=[x,p2[1]];
+      }else if(placement==='aligned-left' || placement==='aligned-right'){
+        // Canonical direction makes side independent of selection order.
+        if(p1[0]>p2[0] || (p1[0]===p2[0] && p1[1]>p2[1])){var swap=p1;p1=p2;p2=swap;}
+        var dx=p2[0]-p1[0],dy=p2[1]-p1[1],len=Math.sqrt(dx*dx+dy*dy);
+        if(len<0.01)throw Error('The two points must be distinct.');
+        var side=placement==='aligned-left'?1:-1;nx=-dy/len*side;ny=dx/len*side;
+        q1=[p1[0]+nx*off,p1[1]+ny*off];q2=[p2[0]+nx*off,p2[1]+ny*off];
+      }else throw Error('Choose a valid point dimension placement.');
+      var dx=q2[0]-q1[0],dy=q2[1]-q1[1],len=Math.sqrt(dx*dx+dy*dy);
+      if(len<0.01)throw Error('The selected points have zero distance in this direction. Choose another direction.');
+      group=drawDimension(parent,s,'points',p1,p2,q1,q2,nx,ny,gap);
+      setTag(group,'RJW_ARCH_PLACEMENT',placement);setTag(group,'RJW_ARCH_CLEARANCE',gap-3);
+      // A nonprinting reference path follows native group transforms and survives save/reopen.
+      var reference=group.pathItems.add();reference.setEntirePath([p1,p2]);reference.filled=false;reference.stroked=false;reference.note=referenceNote;reference.name='Dimension reference points (no stroke)';
+      if(previous)previous.remove();
+      var d=doc();d.selection=null;group.selected=true;save(d,s);
+      if(returnGroup)return group;
+      return 'Point dimension '+formatInches(len*s/72)+'. Separate annotation; source objects were not grouped or moved.';
+    }catch(e){if(group){try{group.remove();}catch(ignored){}}return 'Error: '+e.message;}
+  }
+  RJWArch.dimensionPoints=function(s,placement,offset){try{
+    var d=doc(),points=selectedAnchors(d);
+    return pointDimension(s,placement,offset,points,d.activeLayer,null);
+  }catch(e){return 'Error: '+e.message;}};
+  RJWArch.dimensionChain=function(s,placement,offset){
+    var chain;
+    try{
+      var d=doc(),points=selectedAnchors(d,true);s=scaleVal(s);var off=parseInches(offset)*72;
+      var vertical=placement==='vertical-right' || placement==='vertical-left';
+      var horizontal=placement==='horizontal-above' || placement==='horizontal-below';
+      if(!vertical && !horizontal)throw Error('For a chain choose Vertical right/left or Horizontal above/below.');
+      var axis=vertical?1:0,normalAxis=vertical?0:1;
+      var sign=(placement==='vertical-right' || placement==='horizontal-above')?1:-1;
+      points.sort(function(a,b){return a.point[axis]-b.point[axis];});
+      var edge=points[0].point[normalAxis],clearance=0;
+      for(var i=0;i<points.length;i++){
+        edge=sign>0?Math.max(edge,points[i].point[normalAxis]):Math.min(edge,points[i].point[normalAxis]);
+        clearance=Math.max(clearance,points[i].clearance);
+        if(i && points[i].point[axis]-points[i-1].point[axis]<0.01)throw Error('Each chain anchor must have a different height (vertical) or width position (horizontal).');
+      }
+      if(off<=3+clearance)throw Error('Increase the dimension offset to leave a 3 pt gap outside the object stroke.');
+      chain=d.activeLayer.groupItems.add();chain.name='Chain dimensions';
+      for(var i=0;i<points.length-1;i++){
+        var a=points[i],b=points[i+1];
+        var localEdge=sign>0?Math.max(a.point[normalAxis],b.point[normalAxis]):Math.min(a.point[normalAxis],b.point[normalAxis]);
+        var effectiveOffset=(off+sign*(edge-localEdge))/72;
+        var result=pointDimension(s,placement,String(effectiveOffset),[a,b],chain,null,true);
+        if(typeof result==='string')throw Error(result.replace(/^Error: /,''));
+      }
+      d.selection=null;chain.selected=true;
+      return 'Created '+(points.length-1)+' aligned chain dimensions. Separate annotations; source objects were not moved.';
+    }catch(e){if(chain){try{chain.remove();}catch(ignored){}}return 'Error: '+e.message;}
+  };
   RJWArch.reposition=function(mode,offset){try{
     var d=doc();parseInches(offset);
     if(!d.selection || d.selection.length!==1)throw Error('Select one dimensioned group or one dimension inside it.');
@@ -94,6 +203,14 @@ var RJWArch = RJWArch || {};
     }
     if(!target)throw Error('No matching dimension found. Recreate dimensions made with an older panel version.');
     var savedMode=getTag(target,'RJW_ARCH_MODE'),savedScale=getTag(target,'RJW_ARCH_SCALE');
+    if(savedMode==='points'){
+      var reference=null;
+      for(var i=0;i<target.pageItems.length;i++)if(target.pageItems[i].parent===target && target.pageItems[i].note===referenceNote)reference=target.pageItems[i];
+      if(!reference || reference.pathPoints.length!==2)throw Error('The point dimension reference is missing. Recreate this dimension.');
+      var clearance=Number(getTag(target,'RJW_ARCH_CLEARANCE'));
+      if(!isFinite(clearance) || clearance<0)throw Error('Invalid point dimension metadata. Recreate this dimension.');
+      return pointDimension(savedScale,getTag(target,'RJW_ARCH_PLACEMENT'),offset,[{point:reference.pathPoints[0].anchor,clearance:clearance},{point:reference.pathPoints[1].anchor,clearance:clearance}],target.parent,target);
+    }
     if(!savedMode || !savedScale || !isAssembly(target.parent))throw Error('Recreate this dimension with the updated panel first.');
     return dimension(savedScale,savedMode,offset,target);
   }catch(e){return 'Error: '+e.message;}};

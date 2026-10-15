@@ -12,13 +12,13 @@ function fixture(){
     if(parent)parent.pageItems.push(obj);
     obj.remove=function(){const i=this.parent.pageItems.indexOf(this);if(i>=0)this.parent.pageItems.splice(i,1)};
     obj.move=function(target,where){this.remove();const parent=where==='before'?target.parent:target;this.parent=parent;const i=where==='before'?parent.pageItems.indexOf(target):where==='first'?0:parent.pageItems.length;parent.pageItems.splice(i,0,this)};
-    obj.translate=function(dx,dy){if(this.pageItems)this.pageItems.forEach(x=>x.translate(dx,dy));if(this.points)this.points=this.points.map(([x,y])=>[x+dx,y+dy]);if(this.position)this.position=[this.position[0]+dx,this.position[1]+dy];if(this.bounds)this.bounds=[this.bounds[0]+dx,this.bounds[1]+dy,this.bounds[2]+dx,this.bounds[3]+dy]};
+    obj.translate=function(dx,dy){if(this.pageItems)this.pageItems.forEach(x=>x.translate(dx,dy));if(this.points)this.points=this.points.map(([x,y])=>[x+dx,y+dy]);if(this.pathPoints)this.pathPoints.forEach(p=>{p.anchor=[p.anchor[0]+dx,p.anchor[1]+dy]});if(this.position)this.position=[this.position[0]+dx,this.position[1]+dy];if(this.bounds)this.bounds=[this.bounds[0]+dx,this.bounds[1]+dy,this.bounds[2]+dx,this.bounds[3]+dy]};
     return obj;
   }
   function container(type,parent){
     const obj=item(type,parent);obj.pageItems=[];
     obj.groupItems={add:()=>container('GroupItem',obj)};
-    obj.pathItems={add:()=>{const p=item('PathItem',obj);p.setEntirePath=points=>p.points=points;return p},rectangle:(top,left,width,height)=>{const p=item('PathItem',obj);p.bounds=[left,top,left+width,top-height];return p}};
+    obj.pathItems={add:()=>{const p=item('PathItem',obj);p.setEntirePath=points=>{p.points=points;p.pathPoints=points.map(anchor=>({anchor:[...anchor]}))};return p},rectangle:(top,left,width,height)=>{const p=item('PathItem',obj);p.bounds=[left,top,left+width,top-height];return p}};
     obj.textFrames={add:()=>{const t=item('TextFrame',obj);t.textRange={characterAttributes:{}};t.width=20;Object.defineProperty(t,'geometricBounds',{get(){const [x,y]=this.position;return [x,y,x+20,y-10]}});return t}};
     Object.defineProperty(obj,'visibleBounds',{get(){return [-100,500,900,-500]}});
     return obj;
@@ -29,8 +29,8 @@ function fixture(){
   source.stroked=true;source.strokeWidth=0.75;
   Object.defineProperty(source,'visibleBounds',{get(){const [l,t,r,b]=this.bounds;const half=this.stroked?this.strokeWidth/2:0;return [l-half,t+half,r+half,b-half]}});
   source.pathPoints=[{anchor:[10,28],leftDirection:[10,28]},{anchor:[82,28],rightDirection:[82,28]}];source.closed=false;
-  const doc={selection:[source],tags:{getByName:()=>({})}};
-  const ctx={app:{documents:[doc],activeDocument:doc},ElementPlacement:placement,ZOrderMethod:{BRINGTOFRONT:'front'},RGBColor:function(){}};
+  const doc={activeLayer:layer,selection:[source],tags:{getByName:()=>({})}};
+  const ctx={app:{documents:[doc],activeDocument:doc},ElementPlacement:placement,PathPointSelection:{ANCHORPOINT:'anchor'},ZOrderMethod:{BRINGTOFRONT:'front'},RGBColor:function(){}};
   vm.runInNewContext(host,ctx);
   return {api:ctx.RJWArch,doc,source,layer,sibling};
 }
@@ -126,7 +126,7 @@ test('failed reposition retains the previous dimension',()=>{
 test('panel sends chosen mode and offset to the reposition command',()=>{
   const html=fs.readFileSync(__dirname+'/../ArchitecturalToolsPanel/index.html','utf8');
   const elements={};
-  for(const id of ['save','rectangle','horizontal','vertical','line','reposition','moveMode','offset','status'])elements[id]={};
+  for(const id of ['save','rectangle','horizontal','vertical','line','reposition','moveMode','offset','status','points','pointPlacement','scale','chain'])elements[id]={};
   elements.moveMode.value='vertical';elements.offset.value='0.75';
   let expression;
   vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],{
@@ -168,4 +168,104 @@ test('tiny offsets fail without drawing extensions through the source',()=>{
   const {api,source,layer}=fixture();
   assert.match(api.dimension('48','horizontal','0.01'),/^Error: Increase the dimension offset/);
   assert.equal(source.parent,layer);assert.equal(layer.pageItems.length,2);
+});
+function anchorObject(layer,anchors){
+  const path={typename:'PathItem',parent:layer,note:'',stroked:true,strokeWidth:0.75,
+    pathPoints:anchors.map(anchor=>({anchor,selected:'anchor'}))};
+  layer.pageItems.push(path);return path;
+}
+test('two anchors on different objects measure projected or aligned distances without moving sources',()=>{
+  for(const [placement,label] of [['horizontal-below','36"'],['horizontal-above','36"'],['vertical-right','48"'],['vertical-left','48"'],['aligned-left','60"'],['aligned-right','60"']]){
+    const {api,doc,layer}=fixture();
+    const a=anchorObject(layer,[[0,0]]),b=anchorObject(layer,[[216,288]]);
+    doc.selection=[a,b];
+    assert.ok(api.dimensionPoints('12',placement,'0.3').startsWith('Point dimension '+label));
+    assert.equal(a.parent,layer);assert.equal(b.parent,layer);
+    assert.deepEqual(a.pathPoints[0].anchor,[0,0]);assert.deepEqual(b.pathPoints[0].anchor,[216,288]);
+    const annotation=layer.pageItems.at(-1);
+    assert.equal(annotation.tags.getByName('RJW_ARCH_MODE').value,'points');
+    assert.equal(annotation.pageItems.filter(x=>x.note==='RJW_ARCH_POINT_REFERENCE_V1').length,1);
+  }
+});
+test('point dimensions can be repositioned after native group movement and host reload',()=>{
+  const {api,doc,layer}=fixture();doc.selection=[anchorObject(layer,[[0,0],[216,288]])];
+  api.dimensionPoints('12','horizontal-below','0.3');
+  const annotation=layer.pageItems.at(-1);annotation.translate(40,50);doc.selection=[annotation];
+  // A new host context has no cached anchors; the document reference path is sufficient.
+  const ctx={app:{documents:[doc],activeDocument:doc},RGBColor:function(){},ZOrderMethod:{BRINGTOFRONT:'front'}};
+  vm.runInNewContext(host,ctx);
+  assert.match(ctx.RJWArch.reposition('vertical','0.6'),/^Point dimension 36"/);
+  assert.ok(!layer.pageItems.includes(annotation));
+  const replacement=layer.pageItems.at(-1);
+  const line=replacement.pageItems.find(x=>x.points).points;
+  assert.ok(Math.abs(line[0][1]-(50-43.2))<1e-8);
+});
+test('anchor selection validates counts and projected zero length without leaving annotations',()=>{
+  const {api,doc,layer}=fixture();
+  const a=anchorObject(layer,[[0,0],[0,100]]);doc.selection=[a];const count=layer.pageItems.length;
+  assert.match(api.dimensionPoints('12','horizontal-below','0.3'),/^Error: The selected points have zero/);
+  assert.equal(layer.pageItems.length,count);
+  a.pathPoints[1].selected='handle';
+  assert.match(api.dimensionPoints('12','vertical-right','0.3'),/^Error: Use Direct Selection/);
+  a.pathPoints.push({anchor:[100,100],selected:'anchor'},{anchor:[200,100],selected:'anchor'});
+  assert.match(api.dimensionPoints('12','vertical-right','0.3'),/^Error: Use Direct Selection/);
+});
+test('chains measure consecutive furniture heights on a common baseline despite different object widths',()=>{
+  for(const placement of ['vertical-right','vertical-left']){
+    const {api,doc,layer}=fixture();
+    const sources=[[0,360],[80,108],[20,0],[40,216]].map(p=>anchorObject(layer,[p]));doc.selection=sources;
+    assert.match(api.dimensionChain('12',placement,'0.3'),/^Created 3 aligned chain dimensions/);
+    const chain=layer.pageItems.at(-1);assert.equal(chain.name,'Chain dimensions');assert.equal(chain.pageItems.length,3);
+    const labels=chain.pageItems.map(g=>g.pageItems.find(p=>p.typename==='TextFrame').contents);
+    assert.deepEqual(labels,['18"','18"','24"']);
+    const baseline=placement==='vertical-right'?80+21.6:-21.6;
+    for(const segment of chain.pageItems){
+      const line=segment.pageItems.find(p=>p.points).points;
+      assert.ok(Math.abs(line[0][0]-baseline)<1e-8);assert.equal(line[0][0],line[1][0]);
+    }
+    sources.forEach(s=>assert.equal(s.parent,layer));
+  }
+});
+test('chain validation and failed rendering preserve selected sources',()=>{
+  const {api,doc,layer}=fixture();
+  const source=anchorObject(layer,[[0,0],[10,100],[20,100]]);doc.selection=[source];const count=layer.pageItems.length;
+  assert.match(api.dimensionChain('12','vertical-right','0.3'),/^Error: Each chain anchor/);
+  assert.equal(layer.pageItems.length,count);
+  source.pathPoints[2].anchor=[20,200];
+  assert.match(api.dimensionChain('12','aligned-left','0.3'),/^Error: For a chain/);
+  const add=layer.groupItems.add;
+  layer.groupItems.add=()=>{const chain=add();const segmentAdd=chain.groupItems.add;let n=0;chain.groupItems.add=()=>{const g=segmentAdd();if(++n===2)g.textFrames.add=()=>{throw Error('Cannot render')};return g};return chain};
+  assert.equal(api.dimensionChain('12','vertical-right','0.3'),'Error: Cannot render');
+  assert.equal(layer.pageItems.length,count);assert.equal(source.parent,layer);
+});
+test('point and chain commands reach the CEP bridge with scale, placement and offset',()=>{
+  const html=fs.readFileSync(__dirname+'/../ArchitecturalToolsPanel/index.html','utf8');const elements={};
+  for(const match of html.matchAll(/id="([^"]+)"/g))elements[match[1]]={};
+  elements.scale.value='12';elements.pointPlacement.value='vertical-right';elements.offset.value='0.3';
+  const calls=[];
+  vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],{document:{getElementById:id=>elements[id]},window:{__adobe_cep__:{evalScript:(s,cb)=>{calls.push(s);cb('OK')}}}});
+  elements.points.onclick();elements.chain.onclick();
+  assert.deepEqual(calls,['RJWArch.dimensionPoints("12","vertical-right","0.3")','RJWArch.dimensionChain("12","vertical-right","0.3")']);
+});
+test('nested and compound selection counts each anchor once, ignoring generated annotations',()=>{
+  const {api,doc,source,layer}=fixture();
+  source.pathPoints.forEach(p=>p.selected='anchor');
+  const compound={typename:'CompoundPathItem',parent:layer,pathItems:[source]};source.parent=compound;
+  doc.selection=[compound,source];
+  assert.match(api.dimensionPoints('12','horizontal-below','0.3'),/^Point dimension 12"/);
+  const annotation=layer.pageItems.at(-1);
+  doc.selection=[compound,annotation];
+  assert.match(api.dimensionPoints('12','horizontal-above','0.3'),/^Point dimension 12"/);
+});
+test('horizontal chains share a baseline even with staggered source heights',()=>{
+  for(const placement of ['horizontal-below','horizontal-above']){
+    const {api,doc,layer}=fixture();
+    doc.selection=[anchorObject(layer,[[216,10],[0,50],[108,100]])];
+    assert.match(api.dimensionChain('12',placement,'0.3'),/^Created 2 aligned chain dimensions/);
+    const chain=layer.pageItems.at(-1),baseline=placement==='horizontal-below'?10-21.6:100+21.6;
+    for(const group of chain.pageItems){
+      const line=group.pageItems.find(p=>p.points).points;
+      assert.ok(Math.abs(line[0][1]-baseline)<1e-8);assert.equal(line[0][1],line[1][1]);
+    }
+  }
 });
