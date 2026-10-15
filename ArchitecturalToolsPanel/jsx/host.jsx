@@ -155,23 +155,39 @@ var RJWArch = RJWArch || {};
     var d=doc(),points=selectedAnchors(d);
     return pointDimension(s,placement,offset,points,d.activeLayer,null);
   }catch(e){return 'Error: '+e.message;}};
+  function chainBreakpoints(points,placement){
+    var vertical=placement==='vertical-right' || placement==='vertical-left';
+    if(!vertical && placement!=='horizontal-above' && placement!=='horizontal-below')throw Error('For a chain choose Vertical right/left or Horizontal above/below.');
+    var axis=vertical?1:0,normalAxis=vertical?0:1;
+    var sign=(placement==='vertical-right' || placement==='horizontal-above')?1:-1;
+    points.sort(function(a,b){return a.point[axis]-b.point[axis];});
+    var unique=[];
+    for(var i=0;i<points.length;i++){
+      var current=points[i],last=unique.length?unique[unique.length-1]:null;
+      if(last && Math.abs(current.point[axis]-last.level)<0.01){
+        // At a shared edge, use the anchor facing the chosen dimension side.
+        if(sign*current.point[normalAxis]>sign*last.point[normalAxis])last.point=[current.point[0],current.point[1]];
+        last.clearance=Math.max(last.clearance,current.clearance);
+      }else unique.push({point:[current.point[0],current.point[1]],level:current.point[axis],clearance:current.clearance});
+    }
+    return unique;
+  }
   RJWArch.checkChainSelection=function(placement){try{
     var points=selectedAnchors(doc(),true,true),count=points.length;
     if(count<3)return count+' anchors selected. Select at least 3 anchors with the white arrow (A), holding Shift for each additional anchor.';
-    var vertical=placement==='vertical-right' || placement==='vertical-left';
-    if(!vertical && placement!=='horizontal-above' && placement!=='horizontal-below')return 'Choose Vertical right/left for heights or Horizontal above/below for widths.';
-    var axis=vertical?1:0;
-    points.sort(function(a,b){return a.point[axis]-b.point[axis];});
-    for(var i=1;i<count;i++)if(points[i].point[axis]-points[i-1].point[axis]<0.01)return count+' anchors selected, but some share the same '+(vertical?'height':'width position')+'. Select just one anchor per breakpoint.';
-    return 'Ready: '+count+' anchors will create '+(count-1)+' consecutive '+(vertical?'height':'width')+' dimensions. Click Create chain dimensions.';
+    var unique=chainBreakpoints(points,placement),vertical=placement==='vertical-right' || placement==='vertical-left';
+    var description=vertical?'heights':'width positions';
+    if(unique.length<3)return count+' anchors selected at '+unique.length+' distinct '+description+'. Select at least 3 distinct '+description+' for two or more dimensions.';
+    return 'Ready: '+count+' anchors at '+unique.length+' distinct '+description+' will create '+(unique.length-1)+' consecutive dimensions. Shared levels are combined. Click Create chain dimensions.';
   }catch(e){return 'Error: '+e.message;}};
   RJWArch.dimensionChain=function(s,placement,offset){
     var chain;
     try{
-      var d=doc(),points=selectedAnchors(d,true);s=scaleVal(s);var off=parseInches(offset)*72;
+      var d=doc(),points=chainBreakpoints(selectedAnchors(d,true),placement);s=scaleVal(s);var off=parseInches(offset)*72;
       var vertical=placement==='vertical-right' || placement==='vertical-left';
       var horizontal=placement==='horizontal-above' || placement==='horizontal-below';
       if(!vertical && !horizontal)throw Error('For a chain choose Vertical right/left or Horizontal above/below.');
+      if(points.length<3)throw Error('Select at least 3 distinct '+(vertical?'heights':'width positions')+' for a chain. Shared levels count as one breakpoint.');
       var axis=vertical?1:0,normalAxis=vertical?0:1;
       var sign=(placement==='vertical-right' || placement==='horizontal-above')?1:-1;
       points.sort(function(a,b){return a.point[axis]-b.point[axis];});
@@ -179,7 +195,6 @@ var RJWArch = RJWArch || {};
       for(var i=0;i<points.length;i++){
         edge=sign>0?Math.max(edge,points[i].point[normalAxis]):Math.min(edge,points[i].point[normalAxis]);
         clearance=Math.max(clearance,points[i].clearance);
-        if(i && points[i].point[axis]-points[i-1].point[axis]<0.01)throw Error('Each chain anchor must have a different height (vertical) or width position (horizontal).');
       }
       if(off<=3+clearance)throw Error('Increase the dimension offset to leave a 3 pt gap outside the object stroke.');
       chain=d.activeLayer.groupItems.add();chain.name='Chain dimensions';

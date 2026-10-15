@@ -58,8 +58,9 @@ right or left; for a row of widths choose Horizontal above or below. Set the
 offset and click "Chain dimensions from 3+ anchors". Points are sorted by height
 or width, regardless of selection order. Each adjacent pair gets a dimension;
 all segments share one baseline outside the selected points. With four selected
-heights, you get three consecutive dimensions. Select one anchor at each height;
-duplicate heights (or duplicate width positions for horizontal chains) are rejected.
+heights, you get three consecutive dimensions. Shared heights (or shared width positions in horizontal chains) are combined
+within 0.01 pt. At least three distinct breakpoints are required; overlapping
+anchors where furniture sections meet do not create zero-length dimensions.
 The chain is grouped so its annotations can be moved together. Select an individual
 segment inside the chain to Apply offset; changing that segment's offset can
 separate it from the common baseline. To reposition the whole chain while keeping

@@ -229,7 +229,7 @@ test('chains measure consecutive furniture heights on a common baseline despite 
 test('chain validation and failed rendering preserve selected sources',()=>{
   const {api,doc,layer}=fixture();
   const source=anchorObject(layer,[[0,0],[10,100],[20,100]]);doc.selection=[source];const count=layer.pageItems.length;
-  assert.match(api.dimensionChain('12','vertical-right','0.3'),/^Error: Each chain anchor/);
+  assert.match(api.dimensionChain('12','vertical-right','0.3'),/^Error: Select at least 3 distinct heights/);
   assert.equal(layer.pageItems.length,count);
   source.pathPoints[2].anchor=[20,200];
   assert.match(api.dimensionChain('12','aligned-left','0.3'),/^Error: For a chain/);
@@ -274,7 +274,26 @@ test('chain selection check explains too few, duplicate and valid furniture brea
   assert.match(api.checkChainSelection('vertical-right'),/^0 anchors selected/);
   const path=anchorObject(layer,[[0,0],[0,100],[0,200],[0,300]]);doc.selection=[path];
   const count=layer.pageItems.length;
-  assert.match(api.checkChainSelection('vertical-right'),/^Ready: 4 anchors will create 3 consecutive height dimensions/);
-  assert.match(api.checkChainSelection('horizontal-below'),/some share the same width position/);
+  assert.match(api.checkChainSelection('vertical-right'),/^Ready: 4 anchors at 4 distinct heights will create 3 consecutive dimensions/);
+  assert.match(api.checkChainSelection('horizontal-below'),/at 1 distinct width positions/);
   assert.equal(layer.pageItems.length,count);
+});
+test('touching furniture objects produce two chain dimensions from three shared levels',()=>{
+  for(const placement of ['vertical-left','vertical-right']){
+    const {api,doc,layer}=fixture();
+    doc.selection=[anchorObject(layer,[[0,0],[0,108]]),anchorObject(layer,[[0,108],[0,216]])];
+    assert.match(api.checkChainSelection(placement),/^Ready: 4 anchors at 3 distinct heights will create 2/);
+    assert.match(api.dimensionChain('12',placement,'0.3'),/^Created 2 aligned chain dimensions/);
+    const chain=layer.pageItems.at(-1);
+    assert.deepEqual(chain.pageItems.map(g=>g.pageItems.find(p=>p.typename==='TextFrame').contents),['18"','18"']);
+  }
+});
+test('horizontal shared levels merge and preserve the anchor facing the placement side',()=>{
+  const {api,doc,layer}=fixture();
+  doc.selection=[anchorObject(layer,[[0,0],[108,0]]),anchorObject(layer,[[108,-20],[216,0]])];
+  assert.match(api.dimensionChain('12','horizontal-below','0.3'),/^Created 2 aligned/);
+  const chain=layer.pageItems.at(-1);
+  const references=chain.pageItems.map(g=>g.pageItems.find(p=>p.note==='RJW_ARCH_POINT_REFERENCE_V1'));
+  assert.deepEqual(Array.from(references[0].pathPoints[1].anchor),[108,-20]);
+  assert.deepEqual(Array.from(references[1].pathPoints[0].anchor),[108,-20]);
 });

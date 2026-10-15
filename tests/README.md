@@ -50,7 +50,7 @@ Two-point and chain desktop acceptance:
   should change. Selecting the whole chain is for moving the annotations together,
   not for applying an offset to every segment.
 - Repeat after nesting source paths in groups and compound paths. Only selected
-  anchors should count. Reject whole rectangles, too few anchors, duplicate chain
-  heights, and zero projected distance without leaving partial artwork.
+  anchors should count. Combine duplicate chain heights; reject too few distinct levels and zero
+  projected distance without leaving partial artwork.
 - Confirm native selection and save/reopen behavior in Illustrator; mock tests
   cannot validate these host-specific interactions.
