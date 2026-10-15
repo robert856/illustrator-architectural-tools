@@ -126,7 +126,7 @@ test('failed reposition retains the previous dimension',()=>{
 test('panel sends chosen mode and offset to the reposition command',()=>{
   const html=fs.readFileSync(__dirname+'/../ArchitecturalToolsPanel/index.html','utf8');
   const elements={};
-  for(const id of ['save','rectangle','horizontal','vertical','line','reposition','moveMode','offset','status','points','pointPlacement','scale','chain'])elements[id]={};
+  for(const id of ['save','rectangle','horizontal','vertical','line','reposition','moveMode','offset','status','points','pointPlacement','scale','chain','checkChain','chainFeedback'])elements[id]={};
   elements.moveMode.value='vertical';elements.offset.value='0.75';
   let expression;
   vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],{
@@ -268,4 +268,13 @@ test('horizontal chains share a baseline even with staggered source heights',()=
       assert.ok(Math.abs(line[0][1]-baseline)<1e-8);assert.equal(line[0][1],line[1][1]);
     }
   }
+});
+test('chain selection check explains too few, duplicate and valid furniture breakpoints without edits',()=>{
+  const {api,doc,layer}=fixture();doc.selection=[];
+  assert.match(api.checkChainSelection('vertical-right'),/^0 anchors selected/);
+  const path=anchorObject(layer,[[0,0],[0,100],[0,200],[0,300]]);doc.selection=[path];
+  const count=layer.pageItems.length;
+  assert.match(api.checkChainSelection('vertical-right'),/^Ready: 4 anchors will create 3 consecutive height dimensions/);
+  assert.match(api.checkChainSelection('horizontal-below'),/some share the same width position/);
+  assert.equal(layer.pageItems.length,count);
 });

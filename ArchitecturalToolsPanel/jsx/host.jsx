@@ -91,7 +91,7 @@ var RJWArch = RJWArch || {};
   }catch(e){if(group){try{group.remove();}catch(ignored){}}return 'Error: '+e.message;}}
   RJWArch.dimension=function(s,mode,offset){return dimension(s,mode,offset,null);};
   var referenceNote='RJW_ARCH_POINT_REFERENCE_V1';
-  function selectedAnchors(d,chain){
+  function selectedAnchors(d,chain,allowAny){
     var points=[],seen=[];
     function visit(item){
       if(item.note===dimensionNote)return;
@@ -111,7 +111,7 @@ var RJWArch = RJWArch || {};
       }
     }
     if(d.selection)for(var i=0;i<d.selection.length;i++)visit(d.selection[i]);
-    if((!chain && points.length!==2) || (chain && points.length<3))throw Error('Use Direct Selection (A) to select '+(chain?'at least three':'exactly two')+' anchors. Shift-click anchors on the same or different objects.');
+    if(!allowAny && ((!chain && points.length!==2) || (chain && points.length<3)))throw Error('Use Direct Selection (A) to select '+(chain?'at least three':'exactly two')+' anchors. Shift-click anchors on the same or different objects.');
     return points;
   }
   function pointDimension(s,placement,offset,points,parent,previous,returnGroup){
@@ -154,6 +154,16 @@ var RJWArch = RJWArch || {};
   RJWArch.dimensionPoints=function(s,placement,offset){try{
     var d=doc(),points=selectedAnchors(d);
     return pointDimension(s,placement,offset,points,d.activeLayer,null);
+  }catch(e){return 'Error: '+e.message;}};
+  RJWArch.checkChainSelection=function(placement){try{
+    var points=selectedAnchors(doc(),true,true),count=points.length;
+    if(count<3)return count+' anchors selected. Select at least 3 anchors with the white arrow (A), holding Shift for each additional anchor.';
+    var vertical=placement==='vertical-right' || placement==='vertical-left';
+    if(!vertical && placement!=='horizontal-above' && placement!=='horizontal-below')return 'Choose Vertical right/left for heights or Horizontal above/below for widths.';
+    var axis=vertical?1:0;
+    points.sort(function(a,b){return a.point[axis]-b.point[axis];});
+    for(var i=1;i<count;i++)if(points[i].point[axis]-points[i-1].point[axis]<0.01)return count+' anchors selected, but some share the same '+(vertical?'height':'width position')+'. Select just one anchor per breakpoint.';
+    return 'Ready: '+count+' anchors will create '+(count-1)+' consecutive '+(vertical?'height':'width')+' dimensions. Click Create chain dimensions.';
   }catch(e){return 'Error: '+e.message;}};
   RJWArch.dimensionChain=function(s,placement,offset){
     var chain;
