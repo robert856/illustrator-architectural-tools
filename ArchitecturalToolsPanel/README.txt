@@ -25,66 +25,60 @@ Check that the directory contains CSXS\manifest.xml directly (not an extra neste
 Check that Illustrator supports CEP / Extensions (Legacy). If your version does not,
 this CEP prototype cannot be installed as-is; a UXP or native SDK implementation is needed.
 
-HOW TO USE
-Select drawing scale. Rectangle: enter actual dimensions in inches (e.g. 36, 34 1/2)
-and click Create scaled rectangle. It is created near the top left of the current artboard.
-Dimension: select one object and click Dimension selected width or height; or select
-an open straight two-anchor path and click Dimension selected straight line.
-The source and new dimensions are grouped on the source's layer. Move the group
-with the Selection tool (V) to keep dimensions with the artwork. Leave the group
-selected to add width/height dimensions; only the source artwork is measured.
-Direct Selection (A) can move the source independently. Ungrouping breaks the
-shared movement. Existing dimensions made by the original version remain separate;
-delete those dimensions and recreate them to use grouping.
+GRAPHICAL PANEL
+Choose a diagram tile, a side arrow, then Create dimensions.
+- Width: one selected object/group; up/down arrows place it above/below.
+- Height: one selected object/group; left/right arrows place it outside that side.
+- Two points: use A and Shift-click exactly two anchors, on the same or different
+  objects. Side arrows choose horizontal/vertical placement. Toggle Aligned to
+  measure direct distance; up/left gives side 1, down/right gives side 2.
+- Chain: use A and Shift-click at least three distinct height or width breakpoints.
+  Left/right arrows create vertical chains; up/down create horizontal chains.
+  Points are sorted; shared levels within 0.01 pt are combined. Three levels give
+  two dimensions. For furniture, select bottom, base top, cabinet top, crown top.
 
-TWO-POINT DIMENSIONS
-Use Direct Selection (A). Deselect first, click one anchor, then Shift-click a
-second anchor on the same or another object. Exactly two anchors must be selected;
-selecting an entire rectangle selects too many. Choose a point dimension placement
-(Horizontal below/above, Vertical right/left, or Aligned side 1/2), set the paper
-space offset, then click "Dimension two selected anchors". Horizontal/vertical
-measure the projected distance; Aligned measures the direct distance.
+The circular-arrow button checks the current selection and shows a compact count,
+for example "3 levels -> 2 dimensions". It is an explicit check, not a live count.
+Tooltips explain the diagrams; More tools & help contains detailed instructions.
+The Offset field is in paper inches. Minus/plus changes it by 0.05 in; it affects
+new dimensions only until you click Apply offset. The minimum step value is 0.05.
+Invalid or too-small offsets show an error without creating partial artwork.
+
+Select an existing dimension (or its label/line inside its group) and Apply offset
+to redraw it at its original scale and side. For an assembly with width and height,
+choose Width or Height to identify which to update. If several dimensions share
+that mode, select the desired dimension inside the group. To reposition a straight
+path dimension, select that dimension inside its group. Apply offset preserves
+its side; the side arrows control newly created dimensions.
+
+Rectangle creation is under the collapsible Rectangle section. Enter actual inches
+(e.g. 36, 34 1/2) and Create rectangle. It appears near the active artboard's top left.
+Save scale to the document using the disk icon next to Scale.
+More tools & help also contains Straight path, for an open two-anchor straight path.
+
+MOVEMENT AND EDITING
+Width, height and straight-path dimensions are grouped with their source on its
+original layer. Move the assembly with Selection (V) to keep them together. Add
+another dimension with the assembly selected; only the source geometry is measured.
+Direct Selection (A) can move the source independently. Ungrouping breaks shared
+movement. Dimensions from the original prototype must be recreated to use grouping.
+
+Point and chain dimensions are separate annotations, not live attachments to
+source objects. Moving/resizing source objects requires recreating these annotations.
+A chain is grouped so its annotations move together. Select an individual segment
+inside that group to Apply offset. Moving only a segment can break alignment.
+To change the entire chain's offset while retaining its origins, recreate the chain.
+
 Aligned side 1 is the left normal when reading from the leftmost point to the
 rightmost (bottom to top for a vertical pair); side 2 is the opposite side.
-Repeat with other pairs to create multiple independent dimensions.
-Select a point dimension group, change the offset and click Apply offset to
-redraw it on its original side at its original scale. The reposition dropdown
-is ignored when an individual dimension is selected.
-
-CHAIN DIMENSIONS (FURNITURE BREAKPOINTS)
-With Direct Selection (A), Shift-select three or more anchor breakpoints, including
-anchors from different objects. For crown/cabinet/base heights, choose Vertical
-right or left; for a row of widths choose Horizontal above or below. Set the
-offset and click "Chain dimensions from 3+ anchors". Points are sorted by height
-or width, regardless of selection order. Each adjacent pair gets a dimension;
-all segments share one baseline outside the selected points. With four selected
-heights, you get three consecutive dimensions. Shared heights (or shared width positions in horizontal chains) are combined
-within 0.01 pt. At least three distinct breakpoints are required; overlapping
-anchors where furniture sections meet do not create zero-length dimensions.
-The chain is grouped so its annotations can be moved together. Select an individual
-segment inside the chain to Apply offset; changing that segment's offset can
-separate it from the common baseline. To reposition the whole chain while keeping
-its extension origins fixed, delete/recreate it with the new offset.
-
-Point and chain dimensions are separate annotations, NOT live attachments to
-source objects. The panel does not regroup or move either source object. Moving
-or resizing source objects requires deleting/recreating these annotations.
+Labels have a white background and 3 pt padding. Extension lines begin 3 pt outside
+the visible stroke. Width/height measurements exclude stroke thickness.
 No native canvas click-click-drag tool is registered by this CEP panel.
 
-DIMENSION PLACEMENT
-Width dimensions sit below the source; height dimensions sit to its right.
-Labels are centered on the dimension line with a white background and 3 pt padding.
-To reposition: select the dimensioned group, choose Width/Height/Straight line in
-"Dimension to reposition", enter a positive paper-space offset in inches, then
-click "Apply offset to existing dimension". Larger values move farther away.
-The source stays in place and extension lines are redrawn to the new offset.
-Alternatively, select one dimension group or its label/line inside the assembly
-(using Illustrator's group isolation or Layers panel); Apply offset updates that
-specific dimension regardless of the dropdown. Leave the source and dimension
-in their assembly so moving the assembly still moves everything together.
-If multiple dimensions share the chosen mode, select the specific dimension.
-Older dimensions must be deleted and recreated once with this updated panel.
-Reposition uses the dimension's original drawing scale and current source bounds.
+UPDATING
+Close Illustrator and replace the complete installed ArchitecturalToolsPanel
+contents, including the new js/panel.js file, then restart Illustrator.
+Do not nest another ArchitecturalToolsPanel folder inside the installed one.
 
 NOTES / LIMITATIONS
 * The selected scale is applied to rectangles and dimension readouts. It does NOT

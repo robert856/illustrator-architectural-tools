@@ -74,22 +74,23 @@ var RJWArch = RJWArch || {};
       return group;
     }catch(e){group.remove();throw e;}
   }
-  function dimension(s,mode,offset,previous){try{var d=doc();s=scaleVal(s);var off=parseInches(offset)*72;if(!d.selection||d.selection.length!==1)throw Error('Select exactly one object or straight line.');var obj=sourceOf(previous?previous.parent:d.selection[0]),bounds=obj.geometricBounds;var l=bounds[0],t=bounds[1],r=bounds[2],b=bounds[3];var x1,y1,x2,y2,axis;
-    if(mode==='horizontal'){x1=l;y1=b;x2=r;y2=b;axis='h';}else if(mode==='vertical'){x1=r;y1=b;x2=r;y2=t;axis='v';}else if(mode==='line'){if(obj.typename!=='PathItem'||obj.pathPoints.length!==2||obj.closed)throw Error('Select a single open straight path with two anchors.');var a=obj.pathPoints[0],z=obj.pathPoints[1];if(Math.abs(a.leftDirection[0]-a.anchor[0])>0.01||Math.abs(a.leftDirection[1]-a.anchor[1])>0.01||Math.abs(z.rightDirection[0]-z.anchor[0])>0.01||Math.abs(z.rightDirection[1]-z.anchor[1])>0.01)throw Error('Curved paths are not supported.');x1=a.anchor[0];y1=a.anchor[1];x2=z.anchor[0];y2=z.anchor[1];axis='line';}else throw Error('Unknown dimension mode.');
+  function dimension(s,mode,offset,previous,side){try{var d=doc();s=scaleVal(s);var off=parseInches(offset)*72;if(!d.selection||d.selection.length!==1)throw Error('Select exactly one object or straight line.');var obj=sourceOf(previous?previous.parent:d.selection[0]),bounds=obj.geometricBounds;if(previous)side=getTag(previous,'RJW_ARCH_SIDE');var l=bounds[0],t=bounds[1],r=bounds[2],b=bounds[3];var x1,y1,x2,y2,axis;
+    if(mode==='horizontal'){x1=l;y1=side==='up'?t:b;x2=r;y2=y1;axis='h';}else if(mode==='vertical'){x1=side==='left'?l:r;y1=b;x2=x1;y2=t;axis='v';}else if(mode==='line'){if(obj.typename!=='PathItem'||obj.pathPoints.length!==2||obj.closed)throw Error('Select a single open straight path with two anchors.');var a=obj.pathPoints[0],z=obj.pathPoints[1];if(Math.abs(a.leftDirection[0]-a.anchor[0])>0.01||Math.abs(a.leftDirection[1]-a.anchor[1])>0.01||Math.abs(z.rightDirection[0]-z.anchor[0])>0.01||Math.abs(z.rightDirection[1]-z.anchor[1])>0.01)throw Error('Curved paths are not supported.');x1=a.anchor[0];y1=a.anchor[1];x2=z.anchor[0];y2=z.anchor[1];axis='line';}else throw Error('Unknown dimension mode.');
     var dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);if(len<0.01)throw Error('Selected geometry has zero length.');var ux=dx/len,uy=dy/len,nx=-uy,ny=ux;
-    if(axis==='h'){nx=0;ny=-1;}if(axis==='v'){nx=1;ny=0;}if(axis==='line' && ny<0){nx=-nx;ny=-ny;}
+    if(axis==='h'){nx=0;ny=side==='up'?1:-1;}if(axis==='v'){nx=side==='left'?-1:1;ny=0;}if(axis==='line' && ny<0){nx=-nx;ny=-ny;}
     // Measure paths without stroke, but leave the extension-line gap beyond the ink.
     var visible=obj.visibleBounds,clearance=0;
-    if(axis==='h')clearance=Math.max(0,b-visible[3]);
-    else if(axis==='v')clearance=Math.max(0,visible[2]-r);
+    if(axis==='h')clearance=Math.max(0,ny>0?visible[1]-t:b-visible[3]);
+    else if(axis==='v')clearance=Math.max(0,nx<0?l-visible[0]:visible[2]-r);
     else if(obj.stroked)clearance=obj.strokeWidth/2;
     var gap=3+clearance;
     if(off<=gap)throw Error('Increase the dimension offset to leave a 3 pt gap outside the object stroke.');
     var a1x=x1+nx*off,a1y=y1+ny*off,a2x=x2+nx*off,a2y=y2+ny*off;
     var group=drawDimension(obj.parent,s,mode,[x1,y1],[x2,y2],[a1x,a1y],[a2x,a2y],nx,ny,gap);
+    setTag(group,'RJW_ARCH_SIDE',side || (mode==='vertical'?'right':'down'));
     var label=formatInches(len*s/72),assembly=attachDimension(obj,group);if(previous)previous.remove();d.selection=null;assembly.selected=true;save(d,s);return 'Dimensioned '+label+' at 1:'+s+'. Move the group with the Selection tool (V).';
   }catch(e){if(group){try{group.remove();}catch(ignored){}}return 'Error: '+e.message;}}
-  RJWArch.dimension=function(s,mode,offset){return dimension(s,mode,offset,null);};
+  RJWArch.dimension=function(s,mode,offset,side){return dimension(s,mode,offset,null,side);};
   var referenceNote='RJW_ARCH_POINT_REFERENCE_V1';
   function selectedAnchors(d,chain,allowAny){
     var points=[],seen=[];
@@ -172,6 +173,21 @@ var RJWArch = RJWArch || {};
     }
     return unique;
   }
+  RJWArch.selectionSummary=function(mode,placement){try{
+    var d=doc();
+    if(mode==='points'){
+      var points=selectedAnchors(d,false,true);
+      return points.length===2?'2 anchors → 1 dimension':points.length+' anchors · select exactly 2';
+    }
+    if(mode==='chain'){
+      var points=selectedAnchors(d,true,true);
+      if(!points.length)return '0 anchors · select 3+ levels';
+      var count=chainBreakpoints(points,placement).length;
+      return count>=3?count+' levels → '+(count-1)+' dimensions':count+' levels · select 3+ levels';
+    }
+    if(!d.selection || d.selection.length!==1)return 'Select one object or dimensioned group';
+    sourceOf(d.selection[0]);return '1 object → 1 '+(mode==='height'?'height':'width')+' dimension';
+  }catch(e){return 'Error: '+e.message;}};
   RJWArch.checkChainSelection=function(placement){try{
     var points=selectedAnchors(doc(),true,true),count=points.length;
     if(count<3)return count+' anchors selected. Select at least 3 anchors with the white arrow (A), holding Shift for each additional anchor.';

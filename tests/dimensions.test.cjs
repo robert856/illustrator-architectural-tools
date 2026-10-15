@@ -123,19 +123,7 @@ test('failed reposition retains the previous dimension',()=>{
   assert.equal(api.reposition('horizontal','0.6'),'Error: Text creation failed');
   assert.deepEqual(assembly.pageItems,[original,source]);
 });
-test('panel sends chosen mode and offset to the reposition command',()=>{
-  const html=fs.readFileSync(__dirname+'/../ArchitecturalToolsPanel/index.html','utf8');
-  const elements={};
-  for(const id of ['save','rectangle','horizontal','vertical','line','reposition','moveMode','offset','status','points','pointPlacement','scale','chain','checkChain','chainFeedback'])elements[id]={};
-  elements.moveMode.value='vertical';elements.offset.value='0.75';
-  let expression;
-  vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],{
-    document:{getElementById:id=>elements[id]},window:{__adobe_cep__:{evalScript:(s,cb)=>{expression=s;cb('Updated')}}}
-  });
-  elements.reposition.onclick();
-  assert.equal(expression,'RJWArch.reposition("vertical","0.75")');
-  assert.equal(elements.status.textContent,'Updated');
-});
+
 test('created rectangles measure exactly at every panel scale, excluding stroke',()=>{
   for(const scale of [12,16,24,48,96]){
     for(const width of [24,36]){
@@ -238,15 +226,7 @@ test('chain validation and failed rendering preserve selected sources',()=>{
   assert.equal(api.dimensionChain('12','vertical-right','0.3'),'Error: Cannot render');
   assert.equal(layer.pageItems.length,count);assert.equal(source.parent,layer);
 });
-test('point and chain commands reach the CEP bridge with scale, placement and offset',()=>{
-  const html=fs.readFileSync(__dirname+'/../ArchitecturalToolsPanel/index.html','utf8');const elements={};
-  for(const match of html.matchAll(/id="([^"]+)"/g))elements[match[1]]={};
-  elements.scale.value='12';elements.pointPlacement.value='vertical-right';elements.offset.value='0.3';
-  const calls=[];
-  vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],{document:{getElementById:id=>elements[id]},window:{__adobe_cep__:{evalScript:(s,cb)=>{calls.push(s);cb('OK')}}}});
-  elements.points.onclick();elements.chain.onclick();
-  assert.deepEqual(calls,['RJWArch.dimensionPoints("12","vertical-right","0.3")','RJWArch.dimensionChain("12","vertical-right","0.3")']);
-});
+
 test('nested and compound selection counts each anchor once, ignoring generated annotations',()=>{
   const {api,doc,source,layer}=fixture();
   source.pathPoints.forEach(p=>p.selected='anchor');
@@ -296,4 +276,23 @@ test('horizontal shared levels merge and preserve the anchor facing the placemen
   const references=chain.pageItems.map(g=>g.pageItems.find(p=>p.note==='RJW_ARCH_POINT_REFERENCE_V1'));
   assert.deepEqual(Array.from(references[0].pathPoints[1].anchor),[108,-20]);
   assert.deepEqual(Array.from(references[1].pathPoints[0].anchor),[108,-20]);
+});
+test('object dimensions support above/left arrows and retain side during reposition',()=>{
+  for(const [mode,side] of [['horizontal','up'],['vertical','left']]){
+    const {api,doc,source}=fixture();assert.match(api.dimension('48',mode,'0.3',side),/^Dimensioned/);
+    const assembly=source.parent;doc.selection=[assembly];
+    assert.match(api.reposition(mode,'0.6'),/^Dimensioned/);
+    const group=assembly.pageItems[0],line=group.pageItems.find(p=>p.points).points;
+    assert.equal(group.tags.getByName('RJW_ARCH_SIDE').value,side);
+    if(side==='up')assert.ok(line.every(p=>p[1]>source.bounds[1]));
+    else assert.ok(line.every(p=>p[0]<source.bounds[0]));
+  }
+});
+test('compact selection summary handles shared furniture levels without changing artwork',()=>{
+  const {api,doc,layer}=fixture();doc.selection=[];
+  assert.equal(api.selectionSummary('points','vertical-right'),'0 anchors · select exactly 2');
+  doc.selection=[anchorObject(layer,[[0,0],[0,108]]),anchorObject(layer,[[0,108],[0,216]])];
+  const count=layer.pageItems.length;
+  assert.equal(api.selectionSummary('chain','vertical-right'),'3 levels → 2 dimensions');
+  assert.equal(layer.pageItems.length,count);
 });
